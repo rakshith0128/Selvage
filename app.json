@@ -1,0 +1,18 @@
+{
+  "expo": {
+    "name": "Selvage",
+    "slug": "selvage",
+    "scheme": "selvage",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "automatic",
+    "plugins": ["expo-router"],
+    "ios": {
+      "supportsTablet": false
+    },
+    "android": {},
+    "web": {
+      "bundler": "metro"
+    }
+  }
+}
