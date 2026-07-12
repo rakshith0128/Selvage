@@ -3,7 +3,7 @@ import { View, Text, StyleSheet, Pressable } from 'react-native';
 import { ClothingItem } from '../features/outfits/types';
 import { COLORS, FORMALITY_LABEL } from '../features/outfits/constants';
 import { daysSince } from '../features/outfits/scoring';
-import { GarmentIcon } from './GarmentIcon';
+import { ItemImage } from './ItemImage';
 import { theme } from './theme';
 
 function daysLabel(item: ClothingItem) {
@@ -25,7 +25,7 @@ export function ItemTag({ item, onPress }: Props) {
   const content = (
     <>
       <View style={styles.hole} />
-      <GarmentIcon category={item.category} color={COLORS[item.color].hex} />
+      <ItemImage item={item} size={40} />
       <View style={styles.body}>
         <Text style={styles.name}>{item.name}</Text>
         <Text style={styles.meta}>

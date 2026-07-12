@@ -6,7 +6,16 @@
     "version": "1.0.0",
     "orientation": "portrait",
     "userInterfaceStyle": "automatic",
-    "plugins": ["expo-router"],
+    "plugins": [
+      "expo-router",
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Selvage uses your photos to add clothing items to your closet.",
+          "cameraPermission": "Selvage uses the camera to photograph clothing items."
+        }
+      ]
+    ],
     "ios": {
       "supportsTablet": false
     },

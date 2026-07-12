@@ -3,6 +3,7 @@ import { ClothingItem, OutfitLogEntry, ScoredOutfit } from '../features/outfits/
 import { WeatherId } from '../features/outfits/constants';
 import { generateCandidates } from '../features/outfits/candidates';
 import { supabase } from '../lib/supabase';
+import { deleteItemPhoto } from '../lib/photos';
 
 function rowToItem(row: any): ClothingItem {
   return {
@@ -43,6 +44,8 @@ interface ClosetState {
   shuffle: () => void;
   wearCurrent: () => Promise<void>;
   addItem: (item: Omit<ClothingItem, 'id'>) => Promise<void>;
+  updateItem: (id: string, patch: Partial<Omit<ClothingItem, 'id'>>) => Promise<void>;
+  deleteItem: (id: string) => Promise<void>;
   getCandidates: () => ScoredOutfit[];
 }
 
@@ -148,6 +151,7 @@ export const useClosetStore = create<ClosetState>((set, get) => ({
         warmth: item.warmth,
         pattern: item.pattern,
         last_worn_date: item.lastWornDate,
+        photo_url: item.photoUri ?? null,
       })
       .select()
       .single();
@@ -158,6 +162,53 @@ export const useClosetStore = create<ClosetState>((set, get) => ({
     }
 
     set((state) => ({ items: [...state.items, rowToItem(data)] }));
+  },
+
+  updateItem: async (id, patch) => {
+    const row: Record<string, unknown> = {};
+    if (patch.name !== undefined) row.name = patch.name;
+    if (patch.category !== undefined) row.category = patch.category;
+    if (patch.color !== undefined) row.color = patch.color;
+    if (patch.formality !== undefined) row.formality = patch.formality;
+    if (patch.warmth !== undefined) row.warmth = patch.warmth;
+    if (patch.pattern !== undefined) row.pattern = patch.pattern;
+    if (patch.photoUri !== undefined) row.photo_url = patch.photoUri;
+    if (patch.lastWornDate !== undefined) row.last_worn_date = patch.lastWornDate;
+    if (Object.keys(row).length === 0) return;
+
+    const { data, error } = await supabase
+      .from('items')
+      .update(row)
+      .eq('id', id)
+      .select()
+      .single();
+
+    if (error || !data) {
+      console.warn('Failed to update item:', error?.message);
+      return;
+    }
+
+    set((state) => ({
+      items: state.items.map((i) => (i.id === id ? rowToItem(data) : i)),
+    }));
+  },
+
+  deleteItem: async (id) => {
+    const item = get().items.find((i) => i.id === id);
+
+    const { error } = await supabase.from('items').delete().eq('id', id);
+    if (error) {
+      console.warn('Failed to delete item:', error.message);
+      return;
+    }
+
+    if (item?.photoUri) await deleteItemPhoto(item.photoUri);
+
+    set((state) => ({
+      items: state.items.filter((i) => i.id !== id),
+      anchorId: state.anchorId === id ? null : state.anchorId,
+      candidateIndex: 0,
+    }));
   },
 
   getCandidates: () => {

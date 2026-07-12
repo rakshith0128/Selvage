@@ -31,6 +31,10 @@ export default function RootLayout() {
         name="add-item"
         options={{ presentation: 'modal', headerShown: true, title: 'Add an item' }}
       />
+      <Stack.Screen
+        name="edit-item"
+        options={{ presentation: 'modal', headerShown: true, title: 'Edit item' }}
+      />
       <Stack.Screen name="item/[id]" options={{ headerShown: true, title: '' }} />
     </Stack>
   );
