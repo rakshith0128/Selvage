@@ -7,6 +7,10 @@ This is a working prototype — the recommendation logic is real, photos are
 captured and auto-tagged by a vision model, and the app is backed by a real
 Supabase project behind email/password auth.
 
+live - https://selvagee.vercel.app/
+user - rakshith.s2004@gmail.com
+pass - password
+
 ## What's here
 
 - **Expo Router app** (`app/`) — Today / Closet / Log tabs, an add-item modal
