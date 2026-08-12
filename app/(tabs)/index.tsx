@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { View, Text, ScrollView, Pressable, StyleSheet, ActivityIndicator } from 'react-native';
 import { useClosetStore } from '../../src/store/useClosetStore';
 import { OCCASIONS, WeatherId, WEATHERS } from '../../src/features/outfits/constants';
@@ -13,17 +13,21 @@ export default function TodayScreen() {
     loading,
     occasion,
     weather,
-    candidateIndex,
+    model,
+    pool,
+    currentOutfit,
+    refreshPool,
     setOccasion,
     setWeather,
     shuffle,
+    rateCurrent,
     wearCurrent,
     setAnchor,
-    getCandidates,
   } = useClosetStore();
 
-  const candidates = getCandidates();
-  const current = candidates[candidateIndex];
+  useEffect(() => {
+    if (!loading && items.length > 0 && pool.length === 0) refreshPool();
+  }, [loading]);
 
   if (loading) {
     return (
@@ -52,7 +56,7 @@ export default function TodayScreen() {
       <ChipRow items={WEATHERS} selectedId={weather} onSelect={(id) => setWeather(id as WeatherId)} />
 
       <Text style={styles.label}>Today's pick</Text>
-      {!current ? (
+      {!currentOutfit ? (
         <View style={styles.empty}>
           <Text style={styles.emptyText}>
             Not enough items for this occasion and weather yet. Try a different combination, or
@@ -61,10 +65,18 @@ export default function TodayScreen() {
         </View>
       ) : (
         <View>
-          {current.items.map((i) => (
+          {currentOutfit.items.map((i) => (
             <ItemTag key={i.id} item={i} />
           ))}
-          <Text style={styles.why}>Picked because {explainOutfit(current)}.</Text>
+          <Text style={styles.why}>Picked because {explainOutfit(currentOutfit, model.w)}.</Text>
+          <View style={styles.rateRow}>
+            <Pressable style={styles.rateBtn} onPress={() => rateCurrent('up')}>
+              <Text style={styles.rateBtnText}>👍 Love it</Text>
+            </Pressable>
+            <Pressable style={styles.rateBtn} onPress={() => rateCurrent('down')}>
+              <Text style={styles.rateBtnText}>👎 Not for me</Text>
+            </Pressable>
+          </View>
           <View style={styles.btnRow}>
             <Pressable style={styles.btnSecondary} onPress={shuffle}>
               <Text style={styles.btnSecondaryText}>Shuffle</Text>
@@ -111,6 +123,17 @@ const styles = StyleSheet.create({
   },
   emptyText: { fontSize: 13, color: theme.inkSoft },
   why: { fontSize: 12.5, color: theme.inkSoft, fontStyle: 'italic', marginVertical: 10 },
+  rateRow: { flexDirection: 'row', gap: 10, marginBottom: 8 },
+  rateBtn: {
+    flex: 1,
+    backgroundColor: theme.card,
+    borderWidth: 1,
+    borderColor: theme.line,
+    paddingVertical: 8,
+    borderRadius: 10,
+    alignItems: 'center',
+  },
+  rateBtnText: { color: theme.inkSoft, fontWeight: '600', fontSize: 12.5 },
   btnRow: { flexDirection: 'row', gap: 10 },
   btnPrimary: {
     flex: 1,

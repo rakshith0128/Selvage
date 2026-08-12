@@ -1,5 +1,6 @@
 import { ClothingItem, OutfitLogEntry, ScoredOutfit } from './types';
 import { COLORS } from './constants';
+import { DEFAULT_MODEL, LearnedModel } from './learning';
 
 export function daysSince(dateStr: string | null): number | null {
   if (!dateStr) return null;
@@ -59,42 +60,69 @@ export function neglectBonus(items: ClothingItem[]): number {
   return vals.reduce((a, b) => a + b, 0) / vals.length;
 }
 
-/** Scores 0-1: penalizes repeating a combination that was just suggested/worn. */
+/** Scores 0-1: penalizes repeating recently worn combinations. Jaccard overlap
+ * (shared / union) so adding an accessory to yesterday's outfit can't dodge the
+ * penalty, with a 1-week half-life so old repeats fade. */
 export function noveltyScore(items: ClothingItem[], history: OutfitLogEntry[]): number {
   if (!history.length) return 1;
-  const recent = history.slice(-2);
-  let minNovelty = 1;
-  for (const entry of recent) {
+
+  let worstOverlap = 0;
+  for (const entry of history.slice(-10)) {
     const shared = items.filter((i) => entry.itemIds.includes(i.id)).length;
-    const novelty = 1 - shared / items.length;
-    if (novelty < minNovelty) minNovelty = novelty;
+    const union = new Set([...items.map((i) => i.id), ...entry.itemIds]).size;
+    const jaccard = union ? shared / union : 0;
+
+    const age = daysSince(entry.wornAt) ?? 0;
+    const overlap = jaccard * Math.pow(0.5, Math.max(age, 0) / 7);
+    if (overlap > worstOverlap) worstOverlap = overlap;
   }
-  return minNovelty;
+  return 1 - worstOverlap;
 }
 
-export function scoreOutfit(items: ClothingItem[], history: OutfitLogEntry[]): ScoredOutfit {
+/** Per-outfit taste in [0,1]; the store supplies one backed by learned item
+ * stats + Thompson sampling. Defaults to the cold-start neutral value. */
+export type TasteFn = (items: ClothingItem[]) => number;
+const NEUTRAL_TASTE: TasteFn = () => 0.5;
+
+export function scoreOutfit(
+  items: ClothingItem[],
+  history: OutfitLogEntry[],
+  weights: LearnedModel['w'] = DEFAULT_MODEL.w,
+  tasteFn: TasteFn = NEUTRAL_TASTE
+): ScoredOutfit {
   const colorH = colorHarmony(items);
   const formalityC = formalityCoherence(items);
   const novelty = noveltyScore(items, history);
   const neglect = neglectBonus(items);
+  const taste = tasteFn(items);
 
   return {
     items,
-    total: 0.4 * colorH + 0.25 * formalityC + 0.15 * novelty + 0.2 * neglect,
+    total:
+      weights[0] * colorH +
+      weights[1] * formalityC +
+      weights[2] * novelty +
+      weights[3] * neglect +
+      weights[4] * taste,
     colorHarmony: colorH,
     formalityCoherence: formalityC,
     novelty,
     neglectBonus: neglect,
+    taste,
   };
 }
 
-/** Picks the single biggest contributing factor to explain a suggestion in plain language. */
-export function explainOutfit(sc: ScoredOutfit): string {
+/** Picks the biggest weighted contributor to explain a suggestion in plain language. */
+export function explainOutfit(
+  sc: ScoredOutfit,
+  weights: LearnedModel['w'] = DEFAULT_MODEL.w
+): string {
   const entries: [string, number][] = [
-    ['a clean color pairing', sc.colorHarmony],
-    ['it fits the occasion well', sc.formalityCoherence],
-    ["it's a bit different from recent days", sc.novelty],
-    ['it brings back something you forgot you owned', sc.neglectBonus],
+    ['a clean color pairing', weights[0] * sc.colorHarmony],
+    ['it fits the occasion well', weights[1] * sc.formalityCoherence],
+    ["it's a bit different from recent days", weights[2] * sc.novelty],
+    ['it brings back something you forgot you owned', weights[3] * sc.neglectBonus],
+    ["you've loved these pieces before", weights[4] * sc.taste],
   ];
   entries.sort((a, b) => b[1] - a[1]);
   return entries[0][0];

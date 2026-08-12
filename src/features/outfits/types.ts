@@ -39,4 +39,13 @@ export interface ScoredOutfit {
   formalityCoherence: number;
   novelty: number;
   neglectBonus: number;
+  /** Thompson-sampled per-user taste for these items (0.5 when no feedback yet). */
+  taste: number;
 }
+
+export type {
+  FeedbackAction,
+  FeatureVector,
+  LearnedModel,
+  ItemStats,
+} from './learning';
